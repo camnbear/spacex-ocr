@@ -1,27 +1,17 @@
-/*
-* cropped_word_recognition.cpp
-*
-* A demo program of text recognition in a given cropped word.
-* Shows the use of the OCRBeamSearchDecoder class API using the provided default classifier.
-*
-* Created on: Jul 9, 2015
-*     Author: Lluis Gomez i Bigorda <lgomez AT cvc.uab.es>
-*/
-
 #include <opencv2/text.hpp>
 #include <opencv2/core/utility.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <tesseract/baseapi.h>
 #include <leptonica/allheaders.h>
-#include <iomanip>
 #include <boost/format.hpp>
 #include <iostream>
 #include <fstream>
+#include <vector>
 
-using namespace std;
-using namespace cv;
-using namespace cv::text;
+using std::cout;
+using std::cerr;
+using std::endl;
 
 struct TelemetryPoint {
     unsigned int velocity;
@@ -43,10 +33,6 @@ struct Telemetry {
         data.reserve(frames);
     }
 
-    void add(TelemetryPoint point) {
-        data.push_back(std::move(point));
-    }
-
     void write_data(std::ostream& out) {
         for (size_t x = 0; x < data.size(); x++) {
             const TelemetryPoint& point = data[x];
@@ -55,14 +41,14 @@ struct Telemetry {
     }
 };
 
-Mat* currentFrame;
-
-void onMouse(int event, int x, int y, int, void*)
+void onMouse(int event, int x, int y, int, void* userdata)
 {
     if (event != CV_EVENT_LBUTTONDOWN)
         return;
 
-    cout << "(" << x << ", " << y << "): " << (int)currentFrame->at<uchar>(y, x) << endl;
+    cv::Mat* frame = static_cast<cv::Mat*>(userdata);
+
+    cout << "(" << x << ", " << y << "): " << (int)frame->at<uchar>(y, x) << endl;
 }
 
 int count_digits(int n) {
@@ -80,7 +66,7 @@ int count_digits(int n) {
 class SpaceXOCR {
 private:
     tesseract::TessBaseAPI tess;
-    VideoCapture cap;
+    cv::VideoCapture cap;
     cv::Mat frame;
     
     double fps;
@@ -124,6 +110,7 @@ private:
 
     int find_component_wise(cv::Mat& mat)
     {
+        // https://github.com/tesseract-ocr/tesseract/wiki/APIExample#getcomponentimages-example
         tess.SetImage((uchar*)mat.data, mat.size().width, mat.size().height, mat.channels(), mat.step1());
         Boxa* boxes = tess.GetComponentImages(tesseract::RIL_SYMBOL, true, NULL, NULL);
 
@@ -132,7 +119,7 @@ private:
             throw std::runtime_error("Too many boxes..");
         }
 
-        printf("Found %d textline image components.\n", boxes->n);
+        printf("Found %d symbol image components.\n", boxes->n);
         for (int i = 0; i < boxes->n; i++) {
             BOX* box = boxaGetBox(boxes, i, L_CLONE);
             tess.SetRectangle(box->x, box->y, box->w, box->h);
@@ -156,7 +143,7 @@ private:
         altitude3.copyTo(frame(altitude_rect));
 
         imshow("JCSAT-14", frame);
-        waitKey();
+        cv::waitKey();
     }
 
 
@@ -169,10 +156,10 @@ public:
             throw std::runtime_error("Cannot open file: " + file);
         }        
 
-        fps = cap.get(CAP_PROP_FPS);
-        frame_count = cap.get(CAP_PROP_FRAME_COUNT);
-        width = (int)cap.get(CAP_PROP_FRAME_WIDTH);
-        height = (int)cap.get(CAP_PROP_FRAME_HEIGHT);      
+        fps = cap.get(cv::CAP_PROP_FPS);
+        frame_count = cap.get(cv::CAP_PROP_FRAME_COUNT);
+        width = (int)cap.get(cv::CAP_PROP_FRAME_WIDTH);
+        height = (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 
         cout << boost::format("Opened %1% (%2% fps, %3%x%4%)") % file % fps % width % height << endl;
 
@@ -198,17 +185,16 @@ public:
 
         int prev_digits = 0, prev_velocity = 0;
 
-        cap.set(CAP_PROP_POS_MSEC, 1786 * 1000);// +221000);
-        cv::namedWindow("JCSAT-14", WINDOW_AUTOSIZE);
-        cv::setMouseCallback("JCSAT-14", onMouse, 0);
+        cap.set(cv::CAP_PROP_POS_MSEC, 1786 * 1000);// +221000);
+        cv::namedWindow("JCSAT-14", cv::WINDOW_AUTOSIZE);
+        cv::setMouseCallback("JCSAT-14", onMouse, &frame);
 
 
         for (int x = 0; ; ++x)
         {
             cap >> frame;
-            currentFrame = &frame;
 
-            Size size = frame.size();
+            cv::Size size = frame.size();
             if (frame.empty())
                 break;
 
@@ -229,9 +215,9 @@ public:
 
             printf("%.5f, v = %5d, d = %.2f\n", (x / (double)fps), ocr_velocity, ocr_altitude);
 
-            if (prev_velocity > 450 && ocr_velocity < prev_velocity || x == 39) {
-                display(velocity, displayRect, altitude, altitudeDisplayRect);
-            }
+            //if (prev_velocity > 450 && ocr_velocity < prev_velocity || x == 39) {
+            //    display(velocity, displayRect, altitude, altitudeDisplayRect);
+            //}
 
             result.data.emplace_back(ocr_velocity, ocr_altitude * 1000);
 
@@ -241,47 +227,6 @@ public:
             if (ocr_velocity == 26720) {
                 break;
             }
-
-            /*telemetry.add(ivelocity);
-
-            if (prev_velocity > 9000 && ivelocity < prev_velocity) {
-                cv::cvtColor(velocity, velocity3, CV_GRAY2BGR);
-                line(velocity3, Point(115, 0), Point(115, velocity.size().height - 1), Scalar(0, 0, 255));
-                velocity3.copyTo(frame(displayRect));
-
-                cv::cvtColor(altitude, altitude3, CV_GRAY2BGR);
-                altitude3.copyTo(frame(altitudeDisplayRect));
-
-                imshow("JCSAT-14", frame);
-                waitKey();
-            }
-
-            prev_velocity = ivelocity;
-            prev_digits = new_digits;
-
-            if (ivelocity == 26720) {
-                break;
-            }
-
-            continue;
-
-
-            cv::cvtColor(velocity, velocity3, CV_GRAY2BGR);
-            line(velocity3, Point(115, 0), Point(115, velocity.size().height - 1), Scalar(0, 0, 255));
-            velocity3.copyTo(frame(displayRect));
-
-            if (prev_velocity == 17 && ivelocity == 11) {
-                tess.SetImage((uchar*)velocity.data, velocity.size().width, velocity.size().height, velocity.channels(), velocity.step1());
-                tess.Recognize(0);
-                cout << atoi(tess.GetUTF8Text()) << endl;
-                imshow("JCSAT-14", frame);
-                waitKey(); // waits to display frame
-            }
-
-
-
-            imshow("JCSAT-14", frame);
-            //waitKey(); // waits to display frame*/
         }
 
         return std::move(result);
@@ -291,26 +236,16 @@ public:
 
 int main(int argc, char* argv[])
 {
-    //cv::Mat image = cv::imread("D:\\dev\\spacex-ocr\\spacex-telemetry\\spacex-telemetry\\08893.png");
-    //cv::threshold(image, image, 50, 255, cv::THRESH_BINARY);
+    try {
+        SpaceXOCR ocr("E:\\jcsat14.mp4");
+        Telemetry telemetry = ocr.process();
 
-    std::string file = "E:\\jcsat14.mp4";
-
-    SpaceXOCR ocr(file);
-    Telemetry telemetry = ocr.process();
-
-   
-
-    //cv::Mat sub = image;// image(cv::Rect(50, 200, 300, 100));
-    //tess.SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
-    //tess.Recognize(0);
-    //const char* out = tess.GetUTF8Text();
-
-    //cout << out << endl;
-
-    ofstream myfile;
-    myfile.open("velocity.csv");
-    telemetry.write_data(myfile);
+        std::ofstream myfile;
+        myfile.open("velocity.csv");
+        telemetry.write_data(myfile);
+    } catch (std::exception& e) {
+        cerr << "Failed: " << e.what() << endl;
+    }
 
     return 0;
 }

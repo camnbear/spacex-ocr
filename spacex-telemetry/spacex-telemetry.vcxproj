@@ -76,6 +76,14 @@
     <IncludePath>D:\dev\boost_1_59_0;D:\dev\spacex-ocr\include;D:\dev\opencv\opencv\sources\build\install\include;D:\dev\spacex-ocr\include\tesseract;$(IncludePath)</IncludePath>
     <LibraryPath>D:\dev\spacex-ocr\libs\leptonica-master\x64\Release;D:\dev\opencv\opencv\sources\build\install\x64\vc14\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>D:\dev\boost_1_59_0;D:\dev\opencv\opencv\sources\build\install\include;D:\dev\spacex-ocr\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\dev\opencv\opencv\sources\build\install\x64\vc14\lib;D:\dev\spacex-ocr\libs\leptonica-master\x64\Release;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>D:\dev\boost_1_59_0;D:\dev\opencv\opencv\sources\build\install\include;D:\dev\spacex-ocr\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\dev\opencv\opencv\sources\build\install\x86\vc14\lib;D:\dev\spacex-ocr\libs\leptonica-master\x64\Debug;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -84,6 +92,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opencv_core310d.lib;opencv_highgui310d.lib;opencv_imgproc310d.lib;opencv_imgcodecs310d.lib;opencv_text310d.lib;opencv_video310d.lib;opencv_videoio310d.lib;opencv_videostab310d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
