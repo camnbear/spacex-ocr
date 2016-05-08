@@ -167,7 +167,7 @@ public:
             throw std::runtime_error("720p video expected");
         }
 
-        if (tess.Init("D:\\dev\\spacex-ocr\\spacex-telemetry\\spacex-telemetry", "eng")) {
+        if (tess.Init("C:\\Program Files (x86)\\Tesseract-OCR", "eng")) {
             throw std::runtime_error("Couldn't initialize tesseract");
         }
     }
