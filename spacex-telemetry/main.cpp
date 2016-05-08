@@ -142,7 +142,7 @@ private:
             fprintf(stdout, "Box[%d]: x=%d, y=%d, w=%d, h=%d, confidence: %d, text: %s",
                     i, box->x, box->y, box->w, box->h, conf, ocrResult);
         }
-        result[boxes->n-1] = 0;
+        result[boxes->n] = 0;
         return atoi(result);
     }
 
@@ -229,8 +229,8 @@ public:
 
             printf("%.5f, v = %5d, d = %.2f\n", (x / (double)fps), ocr_velocity, ocr_altitude);
 
-            if (prev_velocity > 9000 && ocr_velocity < prev_velocity || x == 39) {
-                //display(velocity, displayRect, altitude, altitudeDisplayRect);
+            if (prev_velocity > 450 && ocr_velocity < prev_velocity || x == 39) {
+                display(velocity, displayRect, altitude, altitudeDisplayRect);
             }
 
             result.data.emplace_back(ocr_velocity, ocr_altitude * 1000);
